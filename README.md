@@ -1,4 +1,4 @@
-html-to-markdown.el
-===================
+html-to-markdown
+================
 
-HTML to Markdown converter written in emacs-lisp.
+HTML to Markdown converter written in Emacs-lisp.
