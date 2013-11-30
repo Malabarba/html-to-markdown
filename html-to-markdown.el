@@ -5,7 +5,7 @@
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/BruceConnor/html-to-markdown
 ;; Version: 1.0
-;; Keywords: 
+;; Keywords: extensions
 ;; Prefix: htm
 ;; Separator: -
 
@@ -57,6 +57,7 @@
 ;;; Change Log:
 ;; 1.0  - 2013/11/30 - First Release.
 ;;; Code:
+(require 'thingatpt)
 
 (defconst html-to-markdown-version "1.0" "Version of the html-to-markdown.el package.")
 ;; Not really necessary, but useful if you like counting how many versions you've released so far. 
@@ -75,14 +76,22 @@ Please include your emacs and html-to-markdown versions."
   (let ((is-searching t) is-close)
     (while (and is-searching
                 (search-forward-regexp "<[/a-z]" nil t))
-      (if (looking-back "/")
-          (setq is-close t)
-        (forward-char -1))
-      ;; If we found what we were looking for, that's it.
-      (if (and is-close (string= (thing-at-point 'word) tag))
-          (setq is-searching nil)
-        ;; If not, keep parsing.
-        (htm--parse-tag (thing-at-point 'word))))))
+      (let ((delimiter (in-string-p))) ;thingatpt.el
+        ;; If we're inside a string, than it's not tag, move on...
+        (if delimiter
+            (search-forward (char-to-string delimiter))
+          ;; If it IS a tag, check if it opens or closes.
+          (if (looking-back "/")
+              (setq is-close t)
+            (forward-char -1))
+          ;; If we found what we were looking for, that's it.
+          (if (and is-close (string= (thing-at-point 'word) tag))
+              (setq is-searching nil)
+            ;; If not, keep parsing.
+            (if is-close
+                (error "Found </%s>, while expected </%s>."
+                       (thing-at-point 'word) tag)
+              (htm--parse-tag (thing-at-point 'word)))))))))
 
 (defun htm--parse-tag (&optional tag)
   "Parse TAG or tag under point."
