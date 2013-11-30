@@ -3,9 +3,9 @@
 ;; Copyright (C) 2013 Artur Malabarba <bruce.connor.am@gmail.com>
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
-;; URL: http://github.com/BruceConnor/html-to-markdown
+;; URL: http://github.com/Bruce-Connor/html-to-markdown
 ;; Version: 1.0
-;; Keywords: extensions
+;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
 
@@ -68,12 +68,12 @@ Please include your emacs and html-to-markdown versions."
   (interactive)
   (message "Your htm-version is: %s, and your emacs version is: %s.\nPlease include this in your report!"
            html-to-markdown-version emacs-version)
-  (browse-url "https://github.com/BruceConnor/html-to-markdown/issues/new"))
+  (browse-url "https://github.com/Bruce-Connor/html-to-markdown/issues/new"))
 
 (defun htm--find-close-while-parsing (tag)
   "Search forward for TAG, while parsing other tags found on the way."
-  (setq tag (or tag ""))  
-  (let ((is-searching t) is-close)
+  (let ((tag-name (or tag ""))
+        (is-searching t) is-close)
     (while (and is-searching
                 (search-forward-regexp "<[/a-z]" nil t))
       (let ((delimiter (in-string-p))) ;thingatpt.el
@@ -85,13 +85,15 @@ Please include your emacs and html-to-markdown versions."
               (setq is-close t)
             (forward-char -1))
           ;; If we found what we were looking for, that's it.
-          (if (and is-close (string= (thing-at-point 'word) tag))
+          (if (and is-close (string= (thing-at-point 'word) tag-name))
               (setq is-searching nil)
             ;; If not, keep parsing.
             (if is-close
-                (error "Found </%s>, while expected </%s>."
-                       (thing-at-point 'word) tag)
-              (htm--parse-tag (thing-at-point 'word)))))))))
+                (error "Found </%s>, while expected %s."
+                       (thing-at-point 'word)
+                       (if tag (format "</%s>" tag-name) "an openning tag"))
+              (htm--parse-tag (thing-at-point 'word)))))))
+    (and is-searching tag (error "File ended before closing </%s>." tag-name))))
 
 (defun htm--parse-tag (&optional tag)
   "Parse TAG or tag under point."
