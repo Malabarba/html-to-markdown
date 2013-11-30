@@ -1,5 +1,6 @@
-HTML to Markdown converter written in Emacs-lisp.
--------------------------------------------------
+**HTML to Markdown converter written in Emacs-lisp.**
+
+****
 
 This package defines two functions: `html-to-markdown` and
 `html-to-markdown-string`.
