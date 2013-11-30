@@ -1,6 +1,4 @@
-**HTML to Markdown converter written in Emacs-lisp.**
-
-****
+### HTML to Markdown converter written in Emacs-lisp. ###
 
 This package defines two functions: `html-to-markdown` and
 `html-to-markdown-string`.
@@ -12,7 +10,7 @@ features than Markdown, so any tags that can't be converted are left
 as-is (or deleted, if the user so requests).
 
 Instructions
-============
+------
 
 To use this package, simply install it from Melpa (`M-x
 package-install`) and the relevant functions will be autoloaded.
