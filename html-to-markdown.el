@@ -11,19 +11,33 @@
 
 ;;; Commentary:
 ;;
+;; HTML to Markdown converter written in Emacs-lisp.
 ;; 
-
-;;; Instructions:
-;;
-;; INSTALLATION
-;;
-;; This package is available fom Melpa, you may install it by calling
-;; M-x package-install.
-;;
-;; Alternatively, you can download it manually, place it in your
-;; `load-path' and require it with
-;;
-;;     (require 'html-to-markdown)
+;; Instructions
+;; ============
+;; 
+;; To use this package, simply install it from Melpa (M-x
+;; `package-install') and the relevant functions will be autoloaded.
+;; 
+;; This package defines two functions: `html-to-markdown' and
+;; `html-to-markdown-string'.
+;; They are written entirely in Emacs-lisp (which means they'll work on
+;; any platform with no external dependencies), and they convert HTML
+;; source code into Markdown format. Of course, HTML has many more
+;; features than Markdown, so any tags that can't be converted are left
+;; as-is (or deleted, if the user so requests).
+;; 
+;; - `html-to-markdown'  
+;;   Is meant for interactive use. It takes the current buffer (or
+;;   region), converts to Markdown, and displays the result in a separate
+;;   window.
+;; 
+;; - `html-to-markdown-string'  
+;;   Is meant for lisp code. It takes a string argument, which is
+;;   converted to Markdown, and the result is returned.
+;; 
+;; They both take an extra boolean argument `erase-unknown'. If it's
+;; non-nil, tags which can't be converted will be erased.
 
 ;;; License:
 ;;
@@ -54,10 +68,6 @@ Please include your emacs and html-to-markdown versions."
   (message "Your htm-version is: %s, and your emacs version is: %s.\nPlease include this in your report!"
            html-to-markdown-version emacs-version)
   (browse-url "https://github.com/BruceConnor/html-to-markdown/issues/new"))
-(defun htm-customize ()
-  "Open the customization menu in the `html-to-markdown' group."
-  (interactive)
-  (customize-group 'html-to-markdown t))
 
 (defun htm--find-close-while-parsing (tag)
   "Search forward for TAG, while parsing other tags found on the way."
@@ -78,8 +88,12 @@ Please include your emacs and html-to-markdown versions."
   "Parse TAG or tag under point."
   (let* ((tag (or tag (thing-at-point 'word)))
          (func (intern (concat "htm--parse-" tag))))
-    (when (fboundp func)
-      (funcall func))))
+    (if (fboundp func)
+        (funcall func)
+      (when htm--erase-unknown-tags
+        (htm--delete-tag-at-point)))))
+
+(defvar htm--erase-unknown-tags nil "")
 
 (defvar htm--list-depth 0
   "How many spaces should we currently indent list items?")
@@ -203,46 +217,54 @@ the formatting will be lost."
   :group 'html-to-markdown
   :package-version '(html-to-markdown . "0.1a"))
 
-(defun htm--convert ()
+(defun htm--convert (erase-unknown)
   "Perform the actual conversion.
 
 This sort-of expects a temp buffer, because major-mode will be changed."
   (html-mode)
   (goto-char (point-min))
-  (htm--find-close-while-parsing nil))
+  (let ((htm--erase-unknown-tags erase-unknown))
+    (htm--find-close-while-parsing nil)))
 
 ;;;###autoload
-(defun html-to-markdown ()
+(defun html-to-markdown ( &optional erase-unknown)
   "Convert contents of current buffer from html to markdown.
 
 This is meant for interactive use. For lisp code, use:
     (html-to-markdown-string (buffer-string))
 
+If the prefix argument ERASE-UNKNOWN is non-nil, tags which can't
+be converted to markdown will be erased (default is to keep them
+as-is).
+
 Understands the following html tags: 
 p, ol, ul, li, h[1-9], hr, b, it."
-  (interactive)
+  (interactive "P")
   (let* ((l (if (region-active-p) (region-beginning) (point-min)))
          (r (if (region-active-p) (region-end) (point-max)))
          (source (buffer-substring l r)))
     (with-output-to-temp-buffer htm-output-buffer-name
       (set-buffer htm-output-buffer-name)
       (insert source)
-      (htm--convert)
+      (htm--convert erase-unknown)
       (markdown-mode))))
 
 ;;;###autoload
-(defun html-to-markdown-string (source)
+(defun html-to-markdown-string (source &optional erase-unknown)
   "Convert contents of string SOURCE from html to markdown.
 
 Returns a string with the result.
 
+If ERASE-UNKNOWN is non-nil, tags which can't be converted to
+markdown will be erased (default is to keep them as-is).
+
 Understands the following html tags: 
 p, ol, ul, li, h[1-9], hr, b, it."
-  (interactive "MHTML Source: ")
+  (interactive "MHTML Source: \nP")
   (let ((res
          (with-temp-buffer
            (insert source)
-           (htm--convert)
+           (htm--convert erase-unknown)
            (buffer-string))))
     (when (called-interactively-p 'any)
       (with-output-to-temp-buffer htm-output-buffer-name
