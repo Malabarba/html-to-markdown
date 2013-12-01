@@ -73,29 +73,36 @@ Please include your emacs and html-to-markdown versions."
 (defun htm--find-close-while-parsing (tag)
   "Search forward for TAG, while parsing other tags found on the way."
   (let ((tag-name (or tag ""))
-        (is-searching t) is-close)
+        (is-searching t))
     (while (and is-searching
-                (search-forward-regexp "<[/a-z]" nil t))
-      (let ((delimiter (in-string-p))) ;thingatpt.el
-        ;; If we're inside a string, than it's not tag, move on...
+                (search-forward-regexp "<[/a-z]\\|\n" nil t))
+      (let ((delimiter (save-match-data (in-string-p))) ;thingatpt.el
+            tag-found is-close) 
+        ;; If we're inside a string, don't mess with anything, move on...
         (if delimiter
             (search-forward (char-to-string delimiter))
-          ;; If it IS a tag, check if it opens or closes.
-          (if (looking-back "/")
-              (setq is-close t)
-            (forward-char -1))
-          ;; If we found what we were looking for, that's it.
-          (if (and is-close (string= (thing-at-point 'word) tag-name))
-              (setq is-searching nil)
-            ;; If not, keep parsing.
-            (if is-close
-                (error "Found </%s>, while expected %s."
-                       (thing-at-point 'word)
-                       (if tag (format "</%s>" tag-name) "an openning tag"))
-              (htm--parse-tag (thing-at-point 'word)))))))
+          ;; Check if we matched a tag or a newline.
+          (if (looking-back "\n")
+              (unless htm--inside-pre
+                (delete-char -1)
+                (just-one-space 1))
+            ;; If it IS a tag, check if it opens or closes.
+            (if (looking-back "/")
+                (setq is-close t)
+              (forward-char -1))
+            (setq tag-found (thing-at-point 'word))
+            ;; If we found what we were looking for, that's it.
+            (if (and is-close (string= tag-found tag-name))
+                (setq is-searching nil)
+              ;; If not, keep parsing.
+              (if (and is-close (fboundp (intern (concat "htm--parse-" tag-found))))
+                  (error "Found </%s>, while expected %s."
+                         tag-found
+                         (if tag (format "</%s>" tag-name) "an openning tag"))
+                (htm--parse-any-tag tag-found)))))))
     (and is-searching tag (error "File ended before closing </%s>." tag-name))))
 
-(defun htm--parse-tag (&optional tag)
+(defun htm--parse-any-tag (&optional tag)
   "Parse TAG or tag under point."
   (let* ((tag (or tag (thing-at-point 'word)))
          (func (intern (concat "htm--parse-" tag))))
@@ -103,6 +110,69 @@ Please include your emacs and html-to-markdown versions."
         (funcall func)
       (when htm--erase-unknown-tags
         (htm--delete-tag-at-point)))))
+
+(defun htm--backtick-unless-inside-pre ()
+  "Insert \"`\", unless `htm--inside-pre` is non-nil."
+  (unless htm--inside-pre (insert "`")))
+
+(defun htm--define-simple-replacer (cons)
+  "Define a function which replaces (car CONS) with (cdr CONS)."
+  (let* ((tag (car cons))
+         (mds (cdr cons))
+         (var-name (intern (concat "htm--inside-" tag)))
+         (mdl (car-safe mds))
+         (mdr (or (car-safe (cdr-safe mds)) mdl))) ;; mds = markdown-syntax
+    (eval
+     `(defvar ,var-name nil
+        ,(format "Variable let-bound to t while we're inside a %s tag." tag)))
+    (eval
+     `(defun ,(intern (concat "htm--parse-" tag)) ()
+        ,(format "Convert <%s> and </%s> tags into %s." tag tag mds)
+        (htm--delete-tag-at-point)
+        ,(if (and (symbolp mdl) (fboundp mdl))
+             `(funcall ',mdl)
+           `(insert ,mdl))
+        (let ((,var-name t))
+          (htm--find-close-while-parsing ,tag))
+        (htm--delete-tag-at-point)
+        (let (point)
+          (save-excursion
+            (skip-chars-backward "\n ")
+            ,(if (and (symbolp mdr) (fboundp mdr))
+                 `(funcall ',mdr)
+               `(insert ,mdr))
+            (setq point (point)))
+          (if (> point (point)) (goto-char point)))))))
+
+(defvar htm--simple-replacers-alist
+  '(("i"       "_")
+    ("em"      "_")
+    ("b"       "**")
+    ("strong"  "**")
+    ("strike"  "~~")
+    ("pre"     "\n```\n")
+    ("h1"      "\n" "\n---\n")
+    ("h2"      "\n" "\n===\n")
+    ("h3"      "\n### " " ###\n")
+    ("h4"      "\n#### " " ####\n")
+    ("h5"      "\n##### " " #####\n")
+    ("h6"      "\n###### " " ######\n")
+    ("h7"      "\n####### " " #######\n")
+    ("h8"      "\n######## " " ########\n")
+    ("h9"      "\n######### " " #########\n")
+    ("code"   htm--backtick-unless-inside-pre))
+  "List of (TAG . MARKDOWN-SYNTAX) used to define htm--parse- functions.
+
+This defines a function htm--parse-TAG and a variable htm--inside-TAG.
+
+MARKDOWN-SYNTAX is either,
+    (SYNTAX)
+ or 
+    (LEFT-SYNTAX RIGHT-SYNTAX)
+where the syntaxes can be strings or symbols. If they're symbols
+they are called as functions.")
+
+(mapc 'htm--define-simple-replacer htm--simple-replacers-alist)
 
 (defvar htm--erase-unknown-tags nil "")
 
@@ -112,7 +182,7 @@ Please include your emacs and html-to-markdown versions."
 (defvar htm--ordered-list-counter nil
   "If in ordered-list, this is the current counter. o.w. this is nil.")
 
-(defvar htm--ordered-list-step 0 "")
+(defvar htm--list-step 0 "")
 
 (defun htm--define-list-replacer (tag mds ordered)
   (let ((step (length mds)))
@@ -120,13 +190,13 @@ Please include your emacs and html-to-markdown versions."
      `(defun ,(intern (concat "htm--parse-" tag)) ()
         ,(format "Convert <li> inside a <%s> into %s." tag mds)
         (htm--delete-tag-at-point)
-        (when (= htm--ordered-list-step 0)
+        (when (= htm--list-step 0)
           (htm--ensure-blank-line))
-        (incf htm--list-depth htm--ordered-list-step)
+        (incf htm--list-depth htm--list-step)
         (let ((htm--ordered-list-counter ,ordered)
-              (htm--ordered-list-step (+ ,step htm--ordered-list-step)))
+              (htm--list-step (+ ,step htm--list-step)))
           (htm--find-close-while-parsing ,tag))
-        (decf htm--list-depth htm--ordered-list-step)
+        (decf htm--list-depth htm--list-step)
         (htm--delete-tag-at-point)))))
 (htm--define-list-replacer "ul" "-" nil)
 (htm--define-list-replacer "ol" "1." 0)
@@ -140,7 +210,9 @@ Please include your emacs and html-to-markdown versions."
 (defun htm--parse-li ()
   "Convert <li> into 1. or -."
   (htm--delete-tag-at-point)
-  (let ((indent (make-string htm--list-depth 32)))
+  (let ((indent (make-string htm--list-depth 32))
+        (fill-prefix (concat (or fill-prefix "")
+                             (make-string (+ 1 htm--list-depth htm--list-step) ?\s))))
     (if (looking-back "^ +")
         (replace-match indent :fixedcase :literal)
       (unless (looking-back "^") (insert "\n"))
@@ -148,23 +220,42 @@ Please include your emacs and html-to-markdown versions."
     (if (null htm--ordered-list-counter)
         (insert "- ")
       (incf htm--ordered-list-counter)
-      (insert (format "%s. " htm--ordered-list-counter))))
-  (htm--find-close-while-parsing "li")
+      (insert (format "%s. " htm--ordered-list-counter)))
+    (htm--find-close-while-parsing "li"))
   (htm--delete-tag-at-point))
 
-(defvar htm--inside-code nil "Are we inside a code-block?")
-
 (defun htm--parse-p ()
-  "Convert <p> into blank lines."
+  "Convert <p> into blank lines.
+
+Assumes that you won't have plain text and <p>'d text in the same
+line. If you do, this will end up merging them together."
   (htm--delete-tag-at-point)
-  (htm--ensure-blank-line)
-  (when (> htm--ordered-list-step 0)
-    (insert (make-string (+ 1 htm--ordered-list-step htm--list-depth) ?\s)))
-  (when htm--inside-code
-    (insert "    "))
+  (when (looking-back "^\\s-*")
+    (unless (looking-back "\n\\s-*\n\\s-*")
+      (insert "\n"))
+    ;; (htm--ensure-blank-line)
+    (while (looking-back " ") (delete-char -1))
+    (htm--add-padding)
+    ;; (when htm--inside-pre
+    ;;   (insert "    "))
+    )
   (htm--find-close-while-parsing "p")
   (htm--delete-tag-at-point)
+  (save-excursion (skip-chars-backward "\n ") (fill-paragraph))
   (htm--ensure-blank-line))
+
+(defun htm--parse-blockquote ()
+  "Convert <blockquote> into \"> \"."
+  (htm--delete-tag-at-point)
+  (unless (looking-back "^[ >]*")
+    (insert "\n")
+    (htm--add-padding))
+  (insert "> ")      
+  (let ((fill-prefix (concat (or fill-prefix "") "> ")))
+    (htm--find-close-while-parsing "blockquote")
+    (htm--delete-tag-at-point)
+    (save-excursion (skip-chars-backward "\n ") (fill-paragraph)))
+  (insert "\n"))
 
 (defun htm--parse-br ()
   "Convert <br> into \"  \\n\".
@@ -173,47 +264,23 @@ We need to keep the <br> that don't come directly after text,
 otherwise markdown will just swallow the extra blank lines and
 the formatting will be lost."
   (if (looking-back "</")
+      ;; On a close tag, do nothing.
       (htm--delete-tag-at-point)
     (if (looking-back "^ *<")
         (progn (forward-char -1)
                (forward-sexp 1))
       (htm--delete-tag-at-point)
+      (fill-paragraph)
       (insert "  "))
-    (insert "\n")
-    (when (> htm--ordered-list-step 0)
-      (insert (make-string (+ 1 htm--ordered-list-step htm--list-depth) ?\s)))
-    (when htm--inside-code
-      (insert "    "))))
+    (insert "\n\n")
+    (while (looking-at "[ \n]")
+      (delete-char 1))
+    (htm--add-padding)))
 
-(defun htm--define-simple-replacer (cons)
-  "Define a function which replaces (car CONS) with (cdr CONS)."
-  (let ((tag (car cons))
-        (mds (cdr cons))) ;; mds = markdown-syntax
-    (eval
-     `(defun ,(intern (concat "htm--parse-" tag)) ()
-        ,(format "Convert <%s> and </%s> tags into %s." tag tag mds)
-        (htm--delete-tag-at-point)
-        ,(if (and (symbolp mds) (fboundp mds))
-             `(funcall ',mds)
-           `(insert ,mds))
-        (htm--find-close-while-parsing ,tag)
-        (htm--delete-tag-at-point)
-        (save-excursion
-          (skip-chars-backward "\n ")
-          ,(if (and (symbolp mds) (fboundp mds))
-               `(funcall ',mds)
-             `(insert ,mds)))))))
-
-(defvar htm--simple-replacers-alist
-  '(("b" . "**")
-    ("i" . "_")
-    ("strong" . "**")
-    ("em" . "_")
-    ("strike" . "~~")
-    ("p" . htm--ensure-blank-line))
-  "List of (TAG . MARKDOWN-SYNTAX) used to define htm--parse- functions.")
-
-(mapc 'htm--define-simple-replacer htm--simple-replacers-alist)
+(defun htm--add-padding ()
+  ;; (when (> htm--list-step 0)
+  ;;   (insert (make-string (+ 1 htm--list-step htm--list-depth) ?\s)))
+  (when (stringp fill-prefix) (insert fill-prefix)))
 
 (defun htm--delete-tag-at-point ()
   (save-match-data
@@ -226,7 +293,18 @@ the formatting will be lost."
   "Name used for the buffer which holds conversion output."
   :type 'string
   :group 'html-to-markdown
-  :package-version '(html-to-markdown . "0.1a"))
+  :package-version '(html-to-markdown . "1.0"))
+
+(defcustom htm-do-fill-paragraph t
+  "If non-nil, paragraphs will be filled during the conversion.
+
+This leads to good results (it won't screw up your line breaks or
+anything), but some markdown interpreters treat filled paragraphs
+as if they had line breaks. So this may be useful for some
+people."
+  :type 'boolean
+  :group 'html-to-markdown
+  :package-version '(html-to-markdown . "1.0"))
 
 (defun htm--convert (erase-unknown)
   "Perform the actual conversion.
@@ -235,7 +313,10 @@ This sort-of expects a temp buffer, because major-mode will be changed."
   (html-mode)
   (goto-char (point-min))
   (let ((htm--erase-unknown-tags erase-unknown))
-    (htm--find-close-while-parsing nil)))
+    (htm--find-close-while-parsing nil))
+  (goto-char (point-min))
+  (while (search-forward-regexp "\\(< *br *>\\|  \\)\n" nil t)
+    (replace-match "\\1" :fixedcase)))
 
 ;;;###autoload
 (defun html-to-markdown ( &optional erase-unknown)
