@@ -328,9 +328,11 @@ This is meant for interactive use. For lisp code, use:
 If the prefix argument ERASE-UNKNOWN is non-nil, tags which can't
 be converted to markdown will be erased (default is to keep them
 as-is).
+Further behavior is controlled by two variables,
+`htm-do-fill-paragraph' and `htm-output-buffer-name'.
 
-Understands the following html tags: 
-p, ol, ul, li, h[1-9], hr, b, it."
+Understands the following html tags: p, br, ol, ul, li, h[1-9],
+b, it, strong, em, blockquote, pre, code."
   (interactive "P")
   (let* ((l (if (region-active-p) (region-beginning) (point-min)))
          (r (if (region-active-p) (region-end) (point-max)))
@@ -349,9 +351,11 @@ Returns a string with the result.
 
 If ERASE-UNKNOWN is non-nil, tags which can't be converted to
 markdown will be erased (default is to keep them as-is).
+Further behavior is controlled by two variables,
+`htm-do-fill-paragraph' and `htm-output-buffer-name'.
 
-Understands the following html tags: 
-p, ol, ul, li, h[1-9], hr, b, it."
+Understands the following html tags: p, br, ol, ul, li, h[1-9],
+b, it, strong, em, blockquote, pre, code."
   (interactive "MHTML Source: \nP")
   (let ((res
          (with-temp-buffer
