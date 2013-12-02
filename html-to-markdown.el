@@ -123,26 +123,26 @@ Please include your emacs and html-to-markdown versions."
          (mdl (car-safe mds))
          (mdr (or (car-safe (cdr-safe mds)) mdl))) ;; mds = markdown-syntax
     (eval
-     `(defvar ,var-name nil
-        ,(format "Variable let-bound to t while we're inside a %s tag." tag)))
-    (eval
-     `(defun ,(intern (concat "htm--parse-" tag)) ()
-        ,(format "Convert <%s> and </%s> tags into %s." tag tag mds)
-        (htm--delete-tag-at-point)
-        ,(if (and (symbolp mdl) (fboundp mdl))
-             `(funcall ',mdl)
-           `(insert ,mdl))
-        (let ((,var-name t))
-          (htm--find-close-while-parsing ,tag))
-        (htm--delete-tag-at-point)
-        (let (point)
-          (save-excursion
-            (skip-chars-backward "\n ")
-            ,(if (and (symbolp mdr) (fboundp mdr))
-                 `(funcall ',mdr)
-               `(insert ,mdr))
-            (setq point (point)))
-          (if (> point (point)) (goto-char point)))))))
+     `(progn
+        (defvar ,var-name nil
+          ,(format "Variable let-bound to t while we're inside a %s tag." tag))
+        (defun ,(intern (concat "htm--parse-" tag)) ()
+          ,(format "Convert <%s> and </%s> tags into %s." tag tag mds)
+          (htm--delete-tag-at-point)
+          ,(if (and (symbolp mdl) (fboundp mdl))
+               `(funcall ',mdl)
+             `(insert ,mdl))
+          (let ((,var-name t))
+            (htm--find-close-while-parsing ,tag))
+          (htm--delete-tag-at-point)
+          (let (point)
+            (save-excursion
+              (skip-chars-backward "\n ")
+              ,(if (and (symbolp mdr) (fboundp mdr))
+                   `(funcall ',mdr)
+                 `(insert ,mdr))
+              (setq point (point)))
+            (if (> point (point)) (goto-char point))))))))
 
 (defvar htm--simple-replacers-alist
   '(("i"       "_")
