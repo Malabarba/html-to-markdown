@@ -70,6 +70,23 @@ Please include your emacs and html-to-markdown versions."
            html-to-markdown-version emacs-version)
   (browse-url "https://github.com/Bruce-Connor/html-to-markdown/issues/new"))
 
+(defcustom htm-output-buffer-name "*html-to-markdown output*"
+  "Name used for the buffer which holds conversion output."
+  :type 'string
+  :group 'html-to-markdown
+  :package-version '(html-to-markdown . "1.0"))
+
+(defcustom htm-do-fill-paragraph t
+  "If non-nil, paragraphs will be filled during the conversion.
+
+This leads to good results (it won't screw up your line breaks or
+anything), but some markdown interpreters treat filled paragraphs
+as if they had line breaks. So this may be useful for some
+people."
+  :type 'boolean
+  :group 'html-to-markdown
+  :package-version '(html-to-markdown . "1.0"))
+
 (defun htm--find-close-while-parsing (tag)
   "Search forward for TAG, while parsing other tags found on the way."
   (let ((tag-name (or tag ""))
@@ -144,7 +161,7 @@ Please include your emacs and html-to-markdown versions."
               (setq point (point)))
             (if (> point (point)) (goto-char point))))))))
 
-(defvar htm--simple-replacers-alist
+(defconst htm--simple-replacers-alist
   '(("i"       "_")
     ("em"      "_")
     ("b"       "**")
@@ -289,23 +306,6 @@ the formatting will be lost."
       (forward-sexp 1)
       (delete-region opoint (point)))))
 
-(defcustom htm-output-buffer-name "*html-to-markdown output*"
-  "Name used for the buffer which holds conversion output."
-  :type 'string
-  :group 'html-to-markdown
-  :package-version '(html-to-markdown . "1.0"))
-
-(defcustom htm-do-fill-paragraph t
-  "If non-nil, paragraphs will be filled during the conversion.
-
-This leads to good results (it won't screw up your line breaks or
-anything), but some markdown interpreters treat filled paragraphs
-as if they had line breaks. So this may be useful for some
-people."
-  :type 'boolean
-  :group 'html-to-markdown
-  :package-version '(html-to-markdown . "1.0"))
-
 (defun htm--convert (erase-unknown)
   "Perform the actual conversion.
 
@@ -319,7 +319,7 @@ This sort-of expects a temp buffer, because major-mode will be changed."
     (replace-match "\\1" :fixedcase)))
 
 ;;;###autoload
-(defun html-to-markdown ( &optional erase-unknown)
+(defun html-to-markdown (&optional erase-unknown)
   "Convert contents of current buffer from html to markdown.
 
 This is meant for interactive use. For lisp code, use:
