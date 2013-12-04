@@ -343,7 +343,7 @@ b, it, strong, em, blockquote, pre, code."
       (set-buffer htm-output-buffer-name)
       (insert source)
       (htm--convert erase-unknown)
-      (markdown-mode))))
+      (when (fboundp 'markdown-mode) (markdown-mode)))))
 
 ;;;###autoload
 (defun html-to-markdown-string (source &optional erase-unknown)
@@ -368,10 +368,20 @@ b, it, strong, em, blockquote, pre, code."
       (with-output-to-temp-buffer htm-output-buffer-name
         (set-buffer htm-output-buffer-name)
         (insert res)
-        (markdown-mode))
+        (when (fboundp 'markdown-mode) (markdown-mode)))
       (kill-new res)
       (message "Resulting Markdown pushed to kill-ring."))
     res))
+
+
+;;;###autoload
+(defun html-to-markdown-this-buffer (&optional erase-unknown)
+  "Like `html-to-markdown', except ERASES the current buffer and inserts the result."
+  (interactive "P")
+  (let ((res (html-to-markdown-string (buffer-string) erase-unknown)))
+    (erase-buffer)
+    (insert res)
+    (when (fboundp 'markdown-mode) (markdown-mode))))
 
 (provide 'html-to-markdown)
 ;;; html-to-markdown.el ends here.
