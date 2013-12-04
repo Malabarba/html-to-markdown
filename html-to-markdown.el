@@ -369,7 +369,8 @@ b, it, strong, em, blockquote, pre, code."
         (insert res)
         (markdown-mode))
       (kill-new res)
-      (message "Resulting Markdown pushed to kill-ring."))))
+      (message "Resulting Markdown pushed to kill-ring."))
+    res))
 
 (provide 'html-to-markdown)
 ;;; html-to-markdown.el ends here.
