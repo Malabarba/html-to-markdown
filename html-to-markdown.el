@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.0
+;; Version: 1.0.1
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -55,13 +55,14 @@
 ;; 
 
 ;;; Change Log:
-;; 1.0  - 2013/11/30 - First Release.
+;; 1.0.1 - 2013/12/04 - Reorder vars to avoid compilation warning.
+;; 1.0   - 2013/11/30 - First Release.
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.0" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version "1.0.1" "Version of the html-to-markdown.el package.")
 ;; Not really necessary, but useful if you like counting how many versions you've released so far. 
-(defconst html-to-markdown-version-int 2 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version-int 3 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
@@ -86,6 +87,16 @@ people."
   :type 'boolean
   :group 'html-to-markdown
   :package-version '(html-to-markdown . "1.0"))
+
+(defvar htm--erase-unknown-tags nil "")
+
+(defvar htm--list-depth 0
+  "How many spaces should we currently indent list items?")
+
+(defvar htm--ordered-list-counter nil
+  "If in ordered-list, this is the current counter. o.w. this is nil.")
+
+(defvar htm--list-step 0 "")
 
 (defun htm--find-close-while-parsing (tag)
   "Search forward for TAG, while parsing other tags found on the way."
@@ -190,16 +201,6 @@ where the syntaxes can be strings or symbols. If they're symbols
 they are called as functions.")
 
 (mapc 'htm--define-simple-replacer htm--simple-replacers-alist)
-
-(defvar htm--erase-unknown-tags nil "")
-
-(defvar htm--list-depth 0
-  "How many spaces should we currently indent list items?")
-
-(defvar htm--ordered-list-counter nil
-  "If in ordered-list, this is the current counter. o.w. this is nil.")
-
-(defvar htm--list-step 0 "")
 
 (defun htm--define-list-replacer (tag mds ordered)
   (let ((step (length mds)))
