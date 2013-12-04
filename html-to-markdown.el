@@ -265,11 +265,9 @@ line. If you do, this will end up merging them together."
 (defun htm--parse-blockquote ()
   "Convert <blockquote> into \"> \"."
   (htm--delete-tag-at-point)
-  (unless (looking-back "^[ >]*")
-    (insert "\n")
-    (htm--add-padding))
-  (insert "> ")      
+  (insert "\n\n")
   (let ((fill-prefix (concat (or fill-prefix "") "> ")))
+    (htm--add-padding)
     (htm--find-close-while-parsing "blockquote")
     (htm--delete-tag-at-point)
     (save-excursion (skip-chars-backward "\n ") (fill-paragraph)))
@@ -317,6 +315,9 @@ This sort-of expects a temp buffer, because major-mode will be changed."
     (htm--find-close-while-parsing nil))
   (goto-char (point-min))
   (while (search-forward-regexp "\\(< *br *>\\|  \\)\n" nil t)
+    (replace-match "\\1" :fixedcase))
+  (goto-char (point-min))
+  (while (search-forward-regexp "\n\\(\n *>\\)" nil t)
     (replace-match "\\1" :fixedcase)))
 
 ;;;###autoload
