@@ -11,21 +11,28 @@
 
 ;;; Commentary:
 ;;
-;; HTML to Markdown converter written in Emacs-lisp.
+;; ### HTML to Markdown converter written in Emacs-lisp. ###
+;; 
+;; This package defines two functions: `html-to-markdown' and
+;; `html-to-markdown-string';  
+;; and a major-mode: `ham-mode'.
+;; 
+;; The functions are written entirely in Emacs-lisp (which means they'll
+;; work on any platform with no external dependencies), and they convert
+;; HTML source code into Markdown format. Of course, HTML has many more
+;; features than Markdown, so any tags that can't be converted are left
+;; as-is (or deleted, if the user so requests).
+;; 
+;; The major-mode, `ham-mode', allows you to edit HTML files exactly as
+;; if they were Markdown files. Activate it while visiting an HTML file.
+;; The buffer will be converted to Markdown, but the file will still be
+;; kept in HTML format behind the scenes.
 ;; 
 ;; Instructions
-;; ============
+;; ------
 ;; 
 ;; To use this package, simply install it from Melpa (M-x
 ;; `package-install') and the relevant functions will be autoloaded.
-;; 
-;; This package defines two functions: `html-to-markdown' and
-;; `html-to-markdown-string'.
-;; They are written entirely in Emacs-lisp (which means they'll work on
-;; any platform with no external dependencies), and they convert HTML
-;; source code into Markdown format. Of course, HTML has many more
-;; features than Markdown, so any tags that can't be converted are left
-;; as-is (or deleted, if the user so requests).
 ;; 
 ;; - `html-to-markdown'  
 ;;   Is meant for interactive use. It takes the current buffer (or
@@ -35,9 +42,13 @@
 ;; - `html-to-markdown-string'  
 ;;   Is meant for lisp code. It takes a string argument, which is
 ;;   converted to Markdown, and the result is returned.
-;; 
-;; They both take an extra boolean argument `erase-unknown'. If it's
+;;   
+;; Both of these take an extra boolean argument `erase-unknown'. If it's
 ;; non-nil, tags which can't be converted will be erased.
+;; 
+;; - `ham-mode'  
+;;   Simply activate this major-mode on any html file you'd like to edit
+;;   as markdown.
 
 ;;; License:
 ;;
@@ -62,7 +73,6 @@
 (require 'thingatpt)
 
 (defconst html-to-markdown-version "1.1" "Version of the html-to-markdown.el package.")
-;; Not really necessary, but useful if you like counting how many versions you've released so far. 
 (defconst html-to-markdown-version-int 4 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
@@ -72,11 +82,13 @@ Please include your emacs and html-to-markdown versions."
            html-to-markdown-version emacs-version)
   (browse-url "https://github.com/Bruce-Connor/html-to-markdown/issues/new"))
 
+(defgroup html-to-markdown nil
+  "Customization group for html-to-markdown."
+  :prefix "htm" :prefix "ham-mode")
+
 (defcustom htm-output-buffer-name "*html-to-markdown output*"
   "Name used for the buffer which holds conversion output."
-  :type 'string
-  :group 'html-to-markdown
-  :package-version '(html-to-markdown . "1.0"))
+  :type 'string :group 'html-to-markdown)
 
 (defcustom htm-do-fill-paragraph t
   "If non-nil, paragraphs will be filled during the conversion.
@@ -85,9 +97,7 @@ This leads to good results (it won't screw up your line breaks or
 anything), but some markdown interpreters treat filled paragraphs
 as if they had line breaks. So this may be useful for some
 people."
-  :type 'boolean
-  :group 'html-to-markdown
-  :package-version '(html-to-markdown . "1.0"))
+  :type 'boolean :group 'html-to-markdown)
 
 (defvar htm--erase-unknown-tags nil "")
 
@@ -388,6 +398,82 @@ b, it, strong, em, blockquote, pre, code."
     (when (and (called-interactively-p 'any)
                (fboundp 'markdown-mode))
       (markdown-mode))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Here starts ham-mode
+(defcustom ham-mode-markdown-command
+  (list (or (executable-find "markdown")
+            (executable-find "Markdown"))
+        "--html4tags" 'file)
+  "Command used to convert markdown contents into hmtl.
+
+This variable is a list:
+  First element is the full path to the markdown executable.
+  Other elements are either the symbol 'file (replaced with the
+  filename), or strings (arguments to the passed to the
+  executable)."
+  :type '(cons string
+               (repeat (choice (const :tag "The file being edited." file)
+                               (string :tag "String argument."))))
+  :group 'html-to-markdown)
+(put 'ham-mode-markdown-command 'risky-local-variable-p t)
+
+(defun ham-mode--save-as-html ()
+  "Take the current markdown buffer, and OVERWRITE its file with HTML.
+
+This is meant to be used as an `after-save-hook', because it
+assumes the buffer has already been saved.
+
+The buffer contents won't change (will remain as markdown), but
+the visited file will contain HTML code. This means the buffer
+and file contents will not match (that's intended). As long as
+this is an `after-save-hook', that will happen every time the
+buffer is saved, and the file will remain an HTMLized version of
+the current buffer."
+  (interactive)
+  (unless (file-executable-p (car ham-mode-markdown-command))
+    (error "Can't find the markdown executable! Is it installed? See `ham-mode-markdown-command'"))
+  (let ((file (buffer-file-name))
+        output return)
+    (unless file
+      (error (substitute-command-keys "This buffer isn't visiting a file. \\[write-file] to save it.")))
+    (setq output 
+          (with-temp-buffer
+            (setq return
+                  (apply 'call-process
+                         (car ham-mode-markdown-command)
+                         nil t nil
+                         (mapcar
+                          (lambda (x) (if (eq x 'file) file x))
+                          (cdr ham-mode-markdown-command))))
+            (buffer-string)))
+    (when (= return 0)
+      (write-region output nil file nil t)
+      output)))
+
+;;;###autoload
+(define-derived-mode ham-mode markdown-mode "Ham"
+  "Html As Markdown. Transparently edit an html file using markdown.
+
+When this mode is activated in an html file, the buffer is
+converted to markdown and you may edit at will, but the file is
+still saved as html behind the scenes. 
+
+To have it activate automatically on html files, do something like:
+  (add-to-list 'auto-mode-alist '(\".*\\\\.html\\\\'\" . ham-mode))
+
+Initial conversion uses the `html-to-markdown-this-buffer'
+command (handled entirely in elisp by this package :-D).
+
+Subsequent conversions (after every save) are handled by the
+markdown executable (which needs to be installed on your system).
+See `ham-mode-markdown-command' and `ham-mode--save-as-html' on
+how to customize this part."
+  :group 'html-to-markdown
+  (html-to-markdown-this-buffer)
+  (set-buffer-modified-p nil)
+  (add-hook 'after-save-hook 'ham-mode--save-as-html nil :local))
 
 (provide 'html-to-markdown)
 ;;; html-to-markdown.el ends here.
