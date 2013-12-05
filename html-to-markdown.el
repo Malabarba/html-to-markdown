@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.0.1
+;; Version: 1.1
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -55,14 +55,15 @@
 ;; 
 
 ;;; Change Log:
+;; 1.1   - 2013/12/05 - Activate markdown-mode when called interactively.
 ;; 1.0.1 - 2013/12/04 - Reorder vars to avoid compilation warning.
 ;; 1.0   - 2013/11/30 - First Release.
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.0.1" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version "1.1" "Version of the html-to-markdown.el package.")
 ;; Not really necessary, but useful if you like counting how many versions you've released so far. 
-(defconst html-to-markdown-version-int 3 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version-int 4 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
@@ -343,7 +344,9 @@ b, it, strong, em, blockquote, pre, code."
       (set-buffer htm-output-buffer-name)
       (insert source)
       (htm--convert erase-unknown)
-      (when (fboundp 'markdown-mode) (markdown-mode)))))
+      (when (and (called-interactively-p 'any)
+                 (fboundp 'markdown-mode))
+        (markdown-mode)))))
 
 ;;;###autoload
 (defun html-to-markdown-string (source &optional erase-unknown)
@@ -368,7 +371,8 @@ b, it, strong, em, blockquote, pre, code."
       (with-output-to-temp-buffer htm-output-buffer-name
         (set-buffer htm-output-buffer-name)
         (insert res)
-        (when (fboundp 'markdown-mode) (markdown-mode)))
+        (when (fboundp 'markdown-mode)
+          (markdown-mode)))
       (kill-new res)
       (message "Resulting Markdown pushed to kill-ring."))
     res))
@@ -381,7 +385,9 @@ b, it, strong, em, blockquote, pre, code."
   (let ((res (html-to-markdown-string (buffer-string) erase-unknown)))
     (erase-buffer)
     (insert res)
-    (when (fboundp 'markdown-mode) (markdown-mode))))
+    (when (and (called-interactively-p 'any)
+               (fboundp 'markdown-mode))
+      (markdown-mode))))
 
 (provide 'html-to-markdown)
 ;;; html-to-markdown.el ends here.
