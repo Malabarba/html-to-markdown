@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.1
+;; Version: 1.2
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -58,14 +58,15 @@
 ;; 
 
 ;;; Change Log:
+;; 1.2   - 2013/12/06 - convert-this-buffer.
 ;; 1.1   - 2013/12/05 - Activate markdown-mode when called interactively.
 ;; 1.0.1 - 2013/12/04 - Reorder vars to avoid compilation warning.
 ;; 1.0   - 2013/11/30 - First Release.
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.1" "Version of the html-to-markdown.el package.")
-(defconst html-to-markdown-version-int 4 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version "1.2" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version-int 5 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
