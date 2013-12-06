@@ -108,7 +108,7 @@ people."
   (let ((tag-name (or tag ""))
         (is-searching t))
     (while (and is-searching
-                (search-forward-regexp "<[/a-z]\\|\n" nil t))
+                (search-forward-regexp "<[!\\?/a-z]\\|\n" nil t))
       (let ((delimiter (save-match-data (in-string-p))) ;thingatpt.el
             tag-found is-close) 
         ;; If we're inside a string, don't mess with anything, move on...
@@ -120,19 +120,23 @@ people."
                 (delete-char -1)
                 (just-one-space 1))
             ;; If it IS a tag, check if it opens or closes.
-            (if (looking-back "/")
-                (setq is-close t)
-              (forward-char -1))
+            (when (looking-back "/") (setq is-close t))
+            ;; Move to its beginning
+            (skip-chars-backward "[:alpha:]") ;; (forward-char -1)
             (setq tag-found (thing-at-point 'word))
             ;; If we found what we were looking for, that's it.
-            (if (and is-close (string= tag-found tag-name))
-                (setq is-searching nil)
-              ;; If not, keep parsing.
-              (if (and is-close (fboundp (intern (concat "htm--parse-" tag-found))))
-                  (error "Found </%s>, while expected %s."
-                         tag-found
-                         (if tag (format "</%s>" tag-name) "an openning tag"))
-                (htm--parse-any-tag tag-found)))))))
+            (if tag-found
+                (if (and is-close (string= tag-found tag-name))
+                    (setq is-searching nil)
+                  ;; If not, keep parsing.
+                  (if (and is-close (fboundp (intern (concat "htm--parse-" tag-found))))
+                      (error "Found </%s>, while expected %s."
+                             tag-found
+                             (if tag (format "</%s>" tag-name) "an openning tag"))
+                    (htm--parse-any-tag tag-found)))
+              (if (and (looking-at "--")
+                       (looking-back "<!"))
+                  (htm--parse-any-tag "comment")))))))
     (and is-searching tag (error "File ended before closing </%s>." tag-name))))
 
 (defun htm--parse-any-tag (&optional tag)
@@ -229,6 +233,56 @@ they are called as functions.")
       (insert "\n\n")
     (unless (looking-back "\n *\n *")
       (insert "\n"))))
+
+(defun htm--get-tag-property (prop)
+  "Rerturn the property PROP of the that under point.
+
+Doesn't move point, and assumes that point is on the tag name."
+  (let ((rp (regexp-quote prop))
+        (r
+         (save-excursion
+           (search-backward "<")
+           (forward-sexp 1)
+           (1- (point)))))
+    (save-excursion
+      (while (and (not (looking-at rp))
+                  (< (point) r))
+        (forward-sexp 1)
+        (skip-chars-forward "\n 	"))
+      (if (not (looking-at rp))
+          ""
+        (forward-sexp 1)
+        (setq r (point))
+        (forward-sexp 1)
+        (buffer-substring-no-properties r (point))))))
+
+(defun htm--parse-img ()
+  "Convert <a href=\"foo\">text</a> into [text](foo)."
+  (let ((src (htm--get-tag-property "src"))
+        (alt (htm--get-tag-property "alt")))
+    (htm--delete-tag-at-point)
+    (insert (format "![%s](%s)" src alt))))
+
+(defun htm--parse-a ()
+  "Convert <img> into ![text](foo)."
+  (let ((href (htm--get-tag-property "href")))
+    (htm--delete-tag-at-point)
+    (insert "[")
+    (htm--find-close-while-parsing "a")
+    (htm--delete-tag-at-point)
+    (insert (format "](%s)" href))))
+
+(defun htm--parse-hr ()
+  "Convert <hr> into ---."
+  (htm--delete-tag-at-point)
+  (insert "\n---\n\n"))
+
+(defun htm--parse-comment ()
+  "Skip over comments."
+  (search-backward "<!")
+  (let ((l (point)))
+    (search-forward "-->")
+    (delete-region l (point))))
 
 (defun htm--parse-li ()
   "Convert <li> into 1. or -."
