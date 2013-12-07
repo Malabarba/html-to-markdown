@@ -461,15 +461,21 @@ the formatting will be lost."
 This sort-of expects a temp buffer, because major-mode will be changed."
   (html-mode)
   (goto-char (point-min))
+  ;; Perform the conversion
   (let ((htm--erase-unknown-tags erase-unknown))
     (htm--find-close-while-parsing nil))
   (goto-char (point-min))
+  ;; Sometimes we get a blank line at the top
+  (when (looking-at "[	 ]*\n") (replace-match ""))
+  ;; We overkill when it comes to linebreaks, this is where we fix it
   (while (search-forward-regexp "\\(< *br *>\\|  \\)\n" nil t)
     (replace-match "\\1" :fixedcase))
   (goto-char (point-min))
+  ;; We overkill when it comes to linebreaks, this is where we fix it
   (while (search-forward-regexp "\n\\(\n *>\\)" nil t)
     (replace-match "\\1" :fixedcase))
   (goto-char (point-min))
+  ;; Convert Special entities
   (let ((er (htm--entities-regexp)))
     (while (search-forward-regexp er nil t)
       (replace-match (cdr (assoc (match-string-no-properties 0)
