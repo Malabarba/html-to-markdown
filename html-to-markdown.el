@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.3
+;; Version: 1.4
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -58,6 +58,7 @@
 ;; 
 
 ;;; Change Log:
+;; 1.4   - 2013/12/07 - Replace ALL entities, but only those that are displayable.
 ;; 1.3   - 2013/12/06 - htm-entities-alist converts non-ascii chars.
 ;; 1.2   - 2013/12/06 - convert-this-buffer.
 ;; 1.1   - 2013/12/05 - Activate markdown-mode when called interactively.
@@ -66,8 +67,8 @@
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.3" "Version of the html-to-markdown.el package.")
-(defconst html-to-markdown-version-int 6 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version "1.4" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version-int 7 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
@@ -367,94 +368,72 @@ the formatting will be lost."
       (delete-region opoint (point)))))
 
 (defcustom htm-entities-alist
-  '(;; ("&#62;"  . ">")
-    ;; ("&gt;"   . ">")
-    ("&#34;"  . "\"")
-    ("&quot;" . "\"")
-    ("&#39;"  . "'")
-    ("&apos;" . "'")
-    ("&#38;"  . "&")
-    ("&amp;"  . "&") 
-    ("&#60;"  . "<")
-    ("&lt;"   . "<")
-	("&#160;"   . " ")
-    ("&nbsp;"   . " ")
-    ("&#161;"   . "¡")
-    ("&iexcl;"  . "¡")
-    ("&#162;"   . "¢")
-    ("&cent;"   . "¢")
-    ("&#163;"   . "£")
-    ("&pound;"  . "£")
-    ("&#164;"   . "¤")
-    ("&curren;" . "¤")
-    ("&#165;"   . "¥")
-    ("&yen;"    . "¥")
-    ("&#166;"   . "¦")
-    ("&brvbar;" . "¦")
-    ("&#167;"   . "§")
-    ("&sect;"   . "§")
-    ("&#168;"   . "¨")
-    ("&uml;"    . "¨")
-    ("&#169;"   . "©")
-    ("&copy;"   . "©")
-    ("&#170;"   . "ª")
-    ("&ordf;"   . "ª")
-    ("&#171;"   . "«")
-    ("&laquo;"  . "«")
-    ("&#172;"   . "¬")
-    ("&not;"    . "¬")
-    ("&#173;"   . "�")
-    ("&shy;"    . "�")
-    ("&#174;"   . "®")
-    ("&reg;"    . "®")
-    ("&#175;"   . "¯")
-    ("&macr;"   . "¯")
-    ("&#176;"   . "°")
-    ("&deg;"    . "°")
-    ("&#177;"   . "±")
-    ("&plusmn;" . "±")
-    ("&#178;"   . "²")
-    ("&sup2;"   . "²")
-    ("&#179;"   . "³")
-    ("&sup3;"   . "³")
-    ("&#180;"   . "´")
-    ("&acute;"  . "´")
-    ("&#181;"   . "µ")
-    ("&micro;"  . "µ")
-    ("&#182;"   . "¶")
-    ("&para;"   . "¶")
-    ("&#183;"   . "·")
-    ("&middot;" . "·")
-    ("&#184;"   . "¸")
-    ("&cedil;"  . "¸")
-    ("&#185;"   . "¹")
-    ("&sup1;"   . "¹")
-    ("&#186;"   . "º")
-    ("&ordm;"   . "º")
-    ("&#187;"   . "»")
-    ("&raquo;"  . "»")
-    ("&#188;"   . "¼")
-    ("&frac14;" . "¼")
-    ("&#189;"   . "½")
-    ("&frac12;" . "½")
-    ("&#190;"   . "¾")
-    ("&frac34;" . "¾")
-    ("&#191;"   . "¿")
-    ("&iquest;" . "¿")
-    ("&#215;"   . "×")
-    ("&times;"  . "×")
-    ("&#247;"   . "÷")
-    ("&divide;" . "÷"))
+  '( ;; ("#62" . ">") ("gt"  . ">") ;; The > is a little dangerous
+    ("#160"   . " ") ("#161"   . "¡") ("#162"   . "¢") ("#163"   . "£")
+    ("#164"   . "¤") ("#165"   . "¥") ("#166"   . "¦") ("#167"   . "§")
+    ("#168"   . "¨") ("#169"   . "©") ("#170"   . "ª") ("#171"   . "«")
+    ("#172"   . "¬") ("#173"   . "­") ("#174"   . "®") ("#175"   . "¯")
+    ("#176"   . "°") ("#177"   . "±") ("#178"   . "²") ("#179"   . "³")
+    ("#180"   . "´") ("#181"   . "µ") ("#182"   . "¶") ("#183"   . "·")
+    ("#184"   . "¸") ("#185"   . "¹") ("#186"   . "º") ("#187"   . "»")
+    ("#188"   . "¼") ("#189"   . "½") ("#190"   . "¾") ("#191"   . "¿")
+    ("#192"   . "À") ("#193"   . "Á") ("#194"   . "Â") ("#195"   . "Ã")
+    ("#196"   . "Ä") ("#197"   . "Å") ("#198"   . "Æ") ("#199"   . "Ç")
+    ("#200"   . "È") ("#201"   . "É") ("#202"   . "Ê") ("#203"   . "Ë")
+    ("#204"   . "Ì") ("#205"   . "Í") ("#206"   . "Î") ("#207"   . "Ï")
+    ("#208"   . "Ð") ("#209"   . "Ñ") ("#210"   . "Ò") ("#211"   . "Ó")
+    ("#212"   . "Ô") ("#213"   . "Õ") ("#214"   . "Ö") ("#215"   . "×")
+    ("#216"   . "Ø") ("#217"   . "Ù") ("#218"   . "Ú") ("#219"   . "Û")
+    ("#220"   . "Ü") ("#221"   . "Ý") ("#222"   . "Þ") ("#223"   . "ß")
+    ("#224"   . "à") ("#225"   . "á") ("#226"   . "â") ("#227"   . "ã")
+    ("#228"   . "ä") ("#229"   . "å") ("#230"   . "æ") ("#231"   . "ç")
+    ("#232"   . "è") ("#233"   . "é") ("#234"   . "ê") ("#235"   . "ë")
+    ("#236"   . "ì") ("#237"   . "í") ("#238"   . "î") ("#239"   . "ï")
+    ("#240"   . "ð") ("#241"   . "ñ") ("#242"   . "ò") ("#243"   . "ó")
+    ("#244"   . "ô") ("#245"   . "õ") ("#246"   . "ö") ("#247"   . "÷")
+    ("#248"   . "ø") ("#249"   . "ù") ("#250"   . "ú") ("#251"   . "û")
+    ("#252"   . "ü") ("#253"   . "ý") ("#254"   . "þ") ("#255"   . "ÿ")
+    ("#34"    . "\"") ("#38"    . "&") ("#39"    . "'") ("#60"    . "<")
+    ("AElig"  . "Æ") ("Aacute" . "Á") ("Acirc"  . "Â") ("Agrave" . "À")
+    ("Aring"  . "Å") ("Atilde" . "Ã") ("Auml"   . "Ä") ("Ccedil" . "Ç")
+    ("ETH"    . "Ð") ("Eacute" . "É") ("Ecirc"  . "Ê") ("Egrave" . "È")
+    ("Euml"   . "Ë") ("Iacute" . "Í") ("Icirc"  . "Î") ("Igrave" . "Ì")
+    ("Iuml"   . "Ï") ("Ntilde" . "Ñ") ("Oacute" . "Ó") ("Ocirc"  . "Ô")
+    ("Ograve" . "Ò") ("Oslash" . "Ø") ("Otilde" . "Õ") ("Ouml"   . "Ö")
+    ("THORN"  . "Þ") ("Uacute" . "Ú") ("Ucirc"  . "Û") ("Ugrave" . "Ù")
+    ("Uuml"   . "Ü") ("Yacute" . "Ý") ("aacute" . "á") ("acirc"  . "â")
+    ("acute"  . "´") ("aelig"  . "æ") ("agrave" . "à") ("amp"    . "&")
+    ("apos"   . "'") ("aring"  . "å") ("atilde" . "ã") ("auml"   . "ä")
+    ("brvbar" . "¦") ("ccedil" . "ç") ("cedil"  . "¸") ("cent"   . "¢")
+    ("copy"   . "©") ("curren" . "¤") ("deg"    . "°") ("divide" . "÷")
+    ("eacute" . "é") ("ecirc"  . "ê") ("egrave" . "è") ("eth"    . "ð")
+    ("euml"   . "ë") ("frac12" . "½") ("frac14" . "¼") ("frac34" . "¾")
+    ("iacute" . "í") ("icirc"  . "î") ("iexcl"  . "¡") ("igrave" . "ì")
+    ("iquest" . "¿") ("iuml"   . "ï") ("laquo"  . "«") ("lt"     . "<")
+    ("macr"   . "¯") ("micro"  . "µ") ("middot" . "·") ("nbsp"   . " ")
+    ("not"    . "¬") ("ntilde" . "ñ") ("oacute" . "ó") ("ocirc"  . "ô")
+    ("ograve" . "ò") ("ordf"   . "ª") ("ordm"   . "º") ("oslash" . "ø")
+    ("otilde" . "õ") ("ouml"   . "ö") ("para"   . "¶") ("plusmn" . "±")
+    ("pound"  . "£") ("quot"   . "\"") ("raquo"  . "»") ("reg"    . "®")
+    ("sect"   . "§") ("shy"    . "­") ("sup1"   . "¹") ("sup2"   . "²")
+    ("sup3"   . "³") ("szlig"  . "ß") ("thorn"  . "þ") ("times"  . "×")
+    ("uacute" . "ú") ("ucirc"  . "û") ("ugrave" . "ù") ("uml"    . "¨")
+    ("uuml"   . "ü") ("yacute" . "ý") ("yen"    . "¥") ("yuml"   . "ÿ"))
   "List of special chars to be replaced during conversion."
   :type '(repeat (cons string string))
   :group 'html-to-markdown
-  :package-version '(html-to-markdown . "1.3"))
+  :package-version '(html-to-markdown . "1.4"))
 
 (defun htm--entities-regexp ()
   "Replace &xx; entities with their chars.
 
 \">\" is not replaced to avoid conflict with quotes."
-  (regexp-opt (mapcar 'car htm-entities-alist)))
+  (format "&\\(%s\\);"
+          (regexp-opt 
+           (remove nil
+                   (mapcar (lambda (x) (when (char-displayable-p (string-to-char (cdr x)))
+                                    (car x)))
+                           htm-entities-alist)))))
 
 (defun htm--convert (erase-unknown)
   "Perform the actual conversion.
@@ -479,7 +458,7 @@ This sort-of expects a temp buffer, because major-mode will be changed."
   ;; Convert Special entities
   (let ((er (htm--entities-regexp)))
     (while (search-forward-regexp er nil t)
-      (replace-match (cdr (assoc (match-string-no-properties 0)
+      (replace-match (cdr (assoc (match-string-no-properties 1)
                                  htm-entities-alist)) :fixedcase))))
 
 ;;;###autoload
