@@ -58,6 +58,7 @@
 ;; 
 
 ;;; Change Log:
+;; 1.5   - 2013/12/12 - No longer auto-fill.
 ;; 1.5   - 2013/12/12 - Better list handling.
 ;; 1.4   - 2013/12/07 - Replace ALL entities, but only those that are displayable.
 ;; 1.3   - 2013/12/06 - htm-entities-alist converts non-ascii chars.
@@ -86,14 +87,17 @@ Please include your emacs and html-to-markdown versions."
   "Name used for the buffer which holds conversion output."
   :type 'string :group 'html-to-markdown)
 
-(defcustom htm-do-fill-paragraph t
+(defcustom htm-do-fill-paragraph nil
   "If non-nil, paragraphs will be filled during the conversion.
 
-This leads to good results (it won't screw up your line breaks or
-anything), but some markdown interpreters treat filled paragraphs
-as if they had line breaks. So this may be useful for some
-people."
+This sometimes leads to bad results (because the filling is done
+while in html-mode). So we disable it by default."
   :type 'boolean :group 'html-to-markdown)
+;Old doc (was this wrong or what)
+;; This leads to good results (it won't screw up your line breaks or
+;; anything), but some markdown interpreters treat filled paragraphs
+;; as if they had line breaks. So this may be useful for some
+;; people.
 
 (defvar htm--erase-unknown-tags nil "")
 
@@ -306,7 +310,8 @@ Doesn't move point, and assumes that point is on the tag name."
       (insert (format "%s. " htm--ordered-list-counter)))
     (htm--find-close-while-parsing "li"))
   (htm--delete-tag-at-point)
-  (save-excursion (skip-chars-backward "\n ") (fill-paragraph)))
+  (when htm-do-fill-paragraph
+    (save-excursion (skip-chars-backward "\n ") (fill-paragraph))))
 
 (defun htm--parse-p ()
   "Convert <p> into blank lines.
@@ -325,7 +330,8 @@ line. If you do, this will end up merging them together."
     )
   (htm--find-close-while-parsing "p")
   (htm--delete-tag-at-point)
-  (save-excursion (skip-chars-backward "\n ") (fill-paragraph))
+  (when htm-do-fill-paragraph
+    (save-excursion (skip-chars-backward "\n ") (fill-paragraph)))
   (htm--ensure-blank-line))
 
 (defun htm--parse-blockquote ()
@@ -336,7 +342,8 @@ line. If you do, this will end up merging them together."
     (htm--add-padding)
     (htm--find-close-while-parsing "blockquote")
     (htm--delete-tag-at-point)
-    (save-excursion (skip-chars-backward "\n ") (fill-paragraph)))
+    (when htm-do-fill-paragraph
+      (save-excursion (skip-chars-backward "\n ") (fill-paragraph))))
   (insert "\n"))
 
 (defun htm--parse-br ()
@@ -352,7 +359,8 @@ the formatting will be lost."
         (progn (forward-char -1)
                (forward-sexp 1))
       (htm--delete-tag-at-point)
-      (fill-paragraph)
+      (when htm-do-fill-paragraph
+        (fill-paragraph))
       (insert "  "))
     (insert "\n\n")
     (while (looking-at "[ \n]")
