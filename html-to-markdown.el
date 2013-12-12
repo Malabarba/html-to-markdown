@@ -81,7 +81,7 @@ Please include your emacs and html-to-markdown versions."
 
 (defgroup html-to-markdown nil
   "Customization group for html-to-markdown."
-  :prefix "htm")
+  :group 'convenience :group 'files :prefix "htm")
 
 (defcustom htm-output-buffer-name "*html-to-markdown output*"
   "Name used for the buffer which holds conversion output."
