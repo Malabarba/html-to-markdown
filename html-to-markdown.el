@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.4
+;; Version: 1.5
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -58,6 +58,7 @@
 ;; 
 
 ;;; Change Log:
+;; 1.5   - 2013/12/12 - Better list handling.
 ;; 1.4   - 2013/12/07 - Replace ALL entities, but only those that are displayable.
 ;; 1.3   - 2013/12/06 - htm-entities-alist converts non-ascii chars.
 ;; 1.2   - 2013/12/06 - convert-this-buffer.
@@ -67,8 +68,8 @@
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.4" "Version of the html-to-markdown.el package.")
-(defconst html-to-markdown-version-int 7 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version "1.5" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version-int 8 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
@@ -212,21 +213,23 @@ they are called as functions.")
 
 (mapc 'htm--define-simple-replacer htm--simple-replacers-alist)
 
-(defun htm--define-list-replacer (tag mds ordered)
+(defmacro htm--define-list-replacer (tag mds ordered)
   (let ((step (length mds)))
-    (eval
-     `(defun ,(intern (concat "htm--parse-" tag)) ()
-        ,(format "Convert <li> inside a <%s> into %s." tag mds)
-        (htm--delete-tag-at-point)
-        (when (= htm--list-step 0)
-          (htm--ensure-blank-line))
-        (incf htm--list-depth htm--list-step)
-        (let ((htm--ordered-list-counter ,ordered)
-              (htm--list-step (+ ,step htm--list-step)))
-          (htm--find-close-while-parsing ,tag))
-        (decf htm--list-depth htm--list-step)
-        (htm--delete-tag-at-point)
-        (htm--ensure-blank-line)))))
+    `(defun ,(intern (concat "htm--parse-" tag)) ()
+       ,(format "Convert <li> inside a <%s> into %s." tag mds)
+       (htm--delete-tag-at-point)
+       (let ((fill-prefix fill-prefix))
+         (if (= htm--list-step 0)
+             (insert "\n\n\n")
+           (setq fill-prefix (concat (or fill-prefix "")
+                                     (make-string htm--list-step 32))))
+         (incf htm--list-depth htm--list-step)
+         (let ((htm--ordered-list-counter ,ordered)
+               (htm--list-step (+ ,step htm--list-step)))
+           (htm--find-close-while-parsing ,tag))
+         (decf htm--list-depth htm--list-step))
+       (htm--delete-tag-at-point)
+       (htm--ensure-blank-line))))
 (htm--define-list-replacer "ul" "-" nil)
 (htm--define-list-replacer "ol" "1." 0)
 
@@ -294,8 +297,9 @@ Doesn't move point, and assumes that point is on the tag name."
   (htm--ensure-blank-line)
   (htm--add-padding)
   (let ((indent (make-string htm--list-depth 32))
-        (fill-prefix (concat (or fill-prefix "")
-                             (make-string (+ 1 htm--list-depth htm--list-step) ?\s))))
+        (fill-prefix (concat (or fill-prefix "") " "
+                             ;; (make-string (+ 1 htm--list-depth htm--list-step) ?\s)
+                             )))
     (if (null htm--ordered-list-counter)
         (insert "- ")
       (incf htm--ordered-list-counter)
@@ -453,6 +457,10 @@ This sort-of expects a temp buffer, because major-mode will be changed."
   (goto-char (point-min))
   ;; We overkill when it comes to linebreaks, this is where we fix it
   (while (search-forward-regexp "\n\\(\n *>\\)" nil t)
+    (replace-match "\\1" :fixedcase))
+  (goto-char (point-min))
+  (while (search-forward-regexp
+          "\n\\(\n *[-\\*+] \\|\n *[2-9][0-9]*\\. \\)" nil t)
     (replace-match "\\1" :fixedcase))
   (goto-char (point-min))
   ;; Convert Special entities
