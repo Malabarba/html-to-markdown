@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/html-to-markdown
-;; Version: 1.5
+;; Version: 1.5.1
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
@@ -69,8 +69,8 @@
 ;;; Code:
 (require 'thingatpt)
 
-(defconst html-to-markdown-version "1.5" "Version of the html-to-markdown.el package.")
-(defconst html-to-markdown-version-int 8 "Version of the html-to-markdown.el package, as an integer.")
+(defconst html-to-markdown-version "1.5.1" "Version of the html-to-markdown.el package.")
+(defconst html-to-markdown-version-int 9 "Version of the html-to-markdown.el package, as an integer.")
 (defun htm-bug-report ()
   "Opens github issues page in a web browser. Please send any bugs you find.
 Please include your emacs and html-to-markdown versions."
