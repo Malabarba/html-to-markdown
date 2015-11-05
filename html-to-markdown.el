@@ -8,6 +8,7 @@
 ;; Keywords: tools wp languages
 ;; Prefix: htm
 ;; Separator: -
+;; Package-Requires: ((cl-lib "0.5"))
 
 ;;; Commentary:
 ;;
@@ -68,6 +69,7 @@
 ;; 1.0   - 2013/11/30 - First Release.
 ;;; Code:
 (require 'thingatpt)
+(require 'cl-lib)
 
 (defconst html-to-markdown-version "1.5.1" "Version of the html-to-markdown.el package.")
 (defconst html-to-markdown-version-int 9 "Version of the html-to-markdown.el package, as an integer.")
@@ -227,11 +229,11 @@ they are called as functions.")
              (insert "\n\n\n")
            (setq fill-prefix (concat (or fill-prefix "")
                                      (make-string htm--list-step 32))))
-         (incf htm--list-depth htm--list-step)
+         (cl-incf htm--list-depth htm--list-step)
          (let ((htm--ordered-list-counter ,ordered)
                (htm--list-step (+ ,step htm--list-step)))
            (htm--find-close-while-parsing ,tag))
-         (decf htm--list-depth htm--list-step))
+         (cl-decf htm--list-depth htm--list-step))
        (htm--delete-tag-at-point)
        (htm--ensure-blank-line))))
 (htm--define-list-replacer "ul" "-" nil)
@@ -306,7 +308,7 @@ Doesn't move point, and assumes that point is on the tag name."
                              )))
     (if (null htm--ordered-list-counter)
         (insert "- ")
-      (incf htm--ordered-list-counter)
+      (cl-incf htm--ordered-list-counter)
       (insert (format "%s. " htm--ordered-list-counter)))
     (htm--find-close-while-parsing "li"))
   (htm--delete-tag-at-point)
