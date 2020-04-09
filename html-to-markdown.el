@@ -548,5 +548,13 @@ b, it, strong, em, blockquote, pre, code."
                (fboundp 'markdown-mode))
       (markdown-mode))))
 
+;;;###autoload
+(defun html-to-markdown-on-region (begin end)
+  "Run `html-to-markdown' on region from BEGIN to END and replace region with result."
+  (interactive "r")
+  (let ((markdown (html-to-markdown-string (buffer-substring begin end))))
+    (delete-active-region)
+    (insert markdown)))
+
 (provide 'html-to-markdown)
 ;;; html-to-markdown.el ends here.
